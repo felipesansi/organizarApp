@@ -1,11 +1,57 @@
 import colors from '@/constants/colors';
-import{View,Text, StyleSheet, TextInput, Pressable} from 'react-native';
+import React, { useState } from 'react';
+import{View,Text, StyleSheet, TextInput, Pressable, ScrollView, Alert} from 'react-native';
 import { Ionicons} from '@expo/vector-icons'
 import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../../lib/supabase'; 
 
-export default function cadastrar(){
+
+
+export default function Cadastrar(){
+
+
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState(''); 
+    const [password, setPassword] = useState('');
+    const [loding, setLoading] = useState(false);
+
+  
+   async function CadastrosUsers() {
+  setLoading(true);
+
+  const { data, error } = await supabase.auth.signUp({
+    email: email,
+    password: password,
+
+    options: {
+      data: {   
+        name: name,
+      }
+    }
+  });
+
+  
+
+  if (error) {
+    setLoading(false);
+    Alert.alert('Erro ao cadastrar', error.message);
+    return;
+  }
+
+  if (data.user) {
+    
+    Alert.alert('Cadastro realizado com sucesso!', 'Você pode agora fazer login.');
+    router.replace('/');
+    setLoading(false);
+  }
+}
+  
+
     return(
-        <View style={styles.container}> 
+
+            <ScrollView contentContainerStyle={{flex: 1}}>
+                 <View style={styles.container}> 
        <Pressable onPress={() => router.back()}>
       <Ionicons 
        name="arrow-back" 
@@ -19,33 +65,50 @@ export default function cadastrar(){
             <Text style = {styles.logo}>App<Text style = {{color:colors.white}}>Organize</Text></Text>
             <Text style = {styles.slogan}>Crie sua conta</Text>
         </View>
-        // ----formulário de cadastro ----
+        
         <View style = {styles.form}>
                    
              <Text style={styles.label}>Nome completo:</Text>
-             <TextInput placeholder='Digite seu nome completo' style = {styles.input}
+             <TextInput placeholder='Digite seu nome completo'
+              style = {styles.input}
+                value={name}
+                onChangeText={setName}
              ></TextInput>
 
              <Text style={styles.label}>email:</Text>
-             <TextInput placeholder='Digite seu e-mail' style = {styles.input}
+             <TextInput placeholder='Digite seu e-mail'
+             style = {styles.input}
+             value={email}
+             onChangeText={setEmail}
              ></TextInput>
 
 
              <Text style ={styles.label}>senha:</Text>
              <TextInput placeholder='Digite sua senha' 
-             style = {styles.input}secureTextEntry={true}></TextInput>   
+             style = {styles.input}
+             secureTextEntry={true}
+             value={password}
+             onChangeText={setPassword}
+             
+             ></TextInput>   
         
-           <Pressable style= {styles.button}>
-            <Text style={styles.text}>Cadastrar agora</Text>
-            </Pressable>
-              
+          <Pressable style={styles.button} onPress={CadastrosUsers}>
+          <Text style={styles.text}>
+               {loding ? 'Carregando...' : 'Cadastrar agora'}
+         </Text>
+
+         </Pressable>
+
 
             
 
              </View>
 
         </View>
-    )
+ 
+            </ScrollView>
+        
+          )
 }
 
 const styles = StyleSheet.create({
