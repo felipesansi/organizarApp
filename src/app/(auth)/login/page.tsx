@@ -1,114 +1,77 @@
 import colors from '@/constants/colors';
 import React, { useState } from 'react';
-import{View,Text, StyleSheet, TextInput, Pressable, ScrollView, Alert} from 'react-native';
-import { Ionicons} from '@expo/vector-icons'
+import{View,Text, StyleSheet, TextInput, Pressable,ScrollView,Alert} from 'react-native';
+import { Link} from 'expo-router';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase'; 
 
 
-
-export default function Cadastrar(){
-
-
-    const [name, setName] = useState('');
+export default function Login(){
     const [email, setEmail] = useState(''); 
     const [password, setPassword] = useState('');
     const [loding, setLoading] = useState(false);
+       
+    
+async function Entrar() {
+     setLoading(true);
 
-  
-   async function CadastrosUsers() {
-  setLoading(true);
-
-  const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signInWithPassword({
     email: email,
     password: password,
-
-    options: {
-      data: {   
-        name: name,
-      }
-    }
   });
 
-  
+  setLoading(false);
 
   if (error) {
-    setLoading(false);
-    Alert.alert('Erro ao cadastrar', error.message);
+    Alert.alert('Erro ao entrar', error.message);
     return;
   }
 
   if (data.user) {
     
-    Alert.alert('Cadastro realizado com sucesso!', 'Aproveite nosso app!');
-    router.replace('/');
+    router.replace('/(painel)/perfil/page');
     setLoading(false);
   }
 }
-  
+
+    
 
     return(
-
-            <ScrollView contentContainerStyle={{flex: 1}}>
-                 <View style={styles.container}> 
-       <Pressable onPress={() => router.back()}>
-      <Ionicons 
-       name="arrow-back" 
-       size={24} 
-      color={colors.white} 
-       style={{marginLeft: 14, marginTop: 44}} 
-  />
-</Pressable>
-
+        <View style={styles.container}> 
            <View style={styles.header}>
             <Text style = {styles.logo}>App<Text style = {{color:colors.white}}>Organize</Text></Text>
-            <Text style = {styles.slogan}>Crie sua conta</Text>
+            <Text style = {styles.slogan}>Organize seu dia com o melhor App </Text>
         </View>
-        
+     
         <View style = {styles.form}>
-                   
-             <Text style={styles.label}>Nome completo:</Text>
-             <TextInput placeholder='Digite seu nome completo'
-              style = {styles.input}
-                value={name}
-                onChangeText={setName}
-             ></TextInput>
 
              <Text style={styles.label}>email:</Text>
-             <TextInput placeholder='Digite seu e-mail'
-             style = {styles.input}
-             value={email}
-             onChangeText={setEmail}
+             <TextInput placeholder='Digite seu e-mail' style = {styles.input}
+                value={email}
+                onChangeText={setEmail}
              ></TextInput>
 
 
              <Text style ={styles.label}>senha:</Text>
              <TextInput placeholder='Digite sua senha' 
              style = {styles.input}
+                value={password}
+                onChangeText={setPassword}
              secureTextEntry={true}
-             value={password}
-             onChangeText={setPassword}
-             
              ></TextInput>   
         
-          <Pressable style={styles.button} onPress={CadastrosUsers}>
-          <Text style={styles.text}>
-               {loding ? 'Carregando...' : 'Cadastrar agora'}
-         </Text>
-
-         </Pressable>
+       <Pressable style={styles.button} onPress={Entrar}>
+  <Text style={styles.text}>  {loding ? 'Carregando...' : 'Entrar'}</Text>
+</Pressable>
 
 
-            
-
+            <Link href={'/(auth)/cadastro/page'}>
+            <Text style={styles.link}>Não tem uma conta? Cadastre-se</Text>
+            </Link>
              </View>
 
         </View>
- 
-            </ScrollView>
-        
-          )
+    )
 }
 
 const styles = StyleSheet.create({
@@ -122,17 +85,18 @@ const styles = StyleSheet.create({
     header: {
         paddingRight:14,
         paddingLeft:14,
+        marginBottom:40
     },
     logo: {
         fontSize: 24,
         color: colors.green,
         fontWeight: 'bold',
-        marginBottom:8,
+        marginBottom:40,
     },
     slogan: {
         fontSize: 34,
         color: colors.white,
-        marginBottom: 3,
+        marginBottom: 3
     },
     form: {
         flex: 1,
@@ -169,6 +133,11 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     }, 
-   
+    link: {
+        color: colors.blue,
+        fontSize: 16,
+        marginTop: 8,
+        textAlign: 'center',
+    }
 
     });
