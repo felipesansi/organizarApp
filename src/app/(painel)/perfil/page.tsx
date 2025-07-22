@@ -18,11 +18,10 @@ import colors from '@/constants/colors';
 export async function SalvarTarefa(
   nome: string,
   descricao: string,
-  data_conclusao: string,
   user_id: string
 ) {
-  if (!nome || !data_conclusao) {
-    Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
+  if (!nome) {
+    Alert.alert('Erro', 'Por favor, preencha o nome da tarefa.');
     return false;
   }
 
@@ -30,7 +29,7 @@ export async function SalvarTarefa(
     nome,
     descricao,
     data_inicio: new Date().toISOString().split('T')[0],
-    data_conclusao,
+    status: 'pendente',
     user_id,
   };
 
@@ -53,7 +52,6 @@ export default function Perfil() {
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [dataConclusao, setDataConclusao] = useState('');
 
   const [tarefas, setTarefas] = useState<Array<any>>([]);
   const [loading, setLoading] = useState(false);
@@ -76,7 +74,7 @@ export default function Perfil() {
       .from('tarefas')
       .select('*')
       .eq('user_id', user.id)
-      .order('data_conclusao', { ascending: true });
+      .order('data_inicio', { ascending: true });
 
     if (error) {
       Alert.alert('Erro ao carregar tarefas', error.message);
@@ -96,7 +94,7 @@ export default function Perfil() {
     if (editando && idEditando !== null) {
       const { error } = await supabase
         .from('tarefas')
-        .update({ nome, descricao, data_conclusao: dataConclusao })
+        .update({ nome, descricao })
         .eq('id', idEditando);
 
       if (error) {
@@ -106,14 +104,13 @@ export default function Perfil() {
 
       Alert.alert('Sucesso', 'Tarefa atualizada com sucesso!');
     } else {
-      const sucesso = await SalvarTarefa(nome, descricao, dataConclusao, user.id);
+      const sucesso = await SalvarTarefa(nome, descricao, user.id);
       if (!sucesso) return;
     }
 
     setFormVisible(false);
     setNome('');
     setDescricao('');
-    setDataConclusao('');
     setEditando(false);
     setIdEditando(null);
     carregarTarefas();
@@ -140,27 +137,78 @@ export default function Perfil() {
   function editarTarefa(tarefa: any) {
     setNome(tarefa.nome);
     setDescricao(tarefa.descricao);
-    setDataConclusao(tarefa.data_conclusao);
     setIdEditando(tarefa.id);
     setEditando(true);
     setFormVisible(true);
   }
 
+  async function marcarComoConcluida(id: number) {
+    const dataConclusao = new Date().toISOString().split('T')[0];
+    const { error } = await supabase
+      .from('tarefas')
+      .update({ status: 'concluido', data_conclusao: dataConclusao })
+      .eq('id', id);
+
+    if (error) {
+      Alert.alert('Erro ao concluir tarefa', error.message);
+    } else {
+      carregarTarefas();
+    }
+  }
+
   function renderTarefa({ item }: { item: any }) {
     return (
       <View style={styles.tarefaItem}>
-        <Text style={styles.tarefaNome}>{item.nome}</Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={[
+              styles.tarefaNome,
+              item.status === 'concluido' ? { textDecorationLine: 'line-through', color: '#999' } : {},
+            ]}
+          >
+            {item.nome}
+          </Text>
+
+          {item.status === 'pendente' ? (
+            <TouchableOpacity onPress={() => marcarComoConcluida(item.id)} style={styles.botaoConcluir}>
+              <Text style={styles.textoBotaoConcluir}>Concluir</Text>
+            </TouchableOpacity>
+          ) : (
+            <Ionicons name="checkmark-done-outline" size={24} color={colors.green} />
+          )}
+        </View>
+
         {item.descricao ? (
-          <Text style={styles.tarefaDescricao}>{item.descricao}</Text>
+          <Text
+            style={[
+              styles.tarefaDescricao,
+              item.status === 'concluido' ? { textDecorationLine: 'line-through', color: '#999' } : {},
+            ]}
+          >
+            {item.descricao}
+          </Text>
         ) : null}
-        <Text style={styles.tarefaData}>Prazo: {item.data_conclusao}</Text>
+        <Text style={styles.tarefaData}>
+          Data de início: {item.data_inicio ? item.data_inicio : 'Não definida'}
+        </Text>
+        {item.data_conclusao && (
+          <Text style={styles.tarefaData}>
+            Data de conclusão: {item.data_conclusao}
+          </Text>
+        )}
 
         <View style={styles.actionsRow}>
           <TouchableOpacity onPress={() => editarTarefa(item)}>
             <Ionicons name="create-outline" size={20} color={colors.blue} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => excluirTarefa(item.id)} style={{ marginLeft: 15 }}>
-            <Ionicons name="trash-outline" size={20} color={colors.green} />
+            <Ionicons name="trash-outline" size={20} color={colors.blue} />
           </TouchableOpacity>
         </View>
       </View>
@@ -196,11 +244,7 @@ export default function Perfil() {
         ) : tarefas.length === 0 ? (
           <Text>Nenhuma tarefa encontrada.</Text>
         ) : (
-          <FlatList
-            data={tarefas}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderTarefa}
-          />
+          <FlatList data={tarefas} keyExtractor={(item) => item.id.toString()} renderItem={renderTarefa} />
         )}
       </View>
 
@@ -210,7 +254,6 @@ export default function Perfil() {
             setEditando(false);
             setNome('');
             setDescricao('');
-            setDataConclusao('');
             setFormVisible(true);
           }}
         >
@@ -235,14 +278,6 @@ export default function Perfil() {
               placeholder="Digite a descrição"
               value={descricao}
               onChangeText={setDescricao}
-            />
-
-            <Text style={styles.label}>Data de Conclusão *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={dataConclusao}
-              onChangeText={setDataConclusao}
             />
 
             <View style={styles.formActions}>
@@ -341,4 +376,14 @@ const styles = StyleSheet.create({
   },
   cancelar: { color: colors.blue, fontWeight: 'bold' },
   salvar: { color: colors.green, fontWeight: 'bold' },
+  botaoConcluir: {
+    backgroundColor: colors.green,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+  },
+  textoBotaoConcluir: {
+    color: colors.white,
+    fontWeight: 'bold',
+  },
 });
