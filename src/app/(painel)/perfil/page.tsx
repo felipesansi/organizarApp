@@ -1,5 +1,12 @@
-import { 
-  View, Text, TextInput, TouchableOpacity, Modal, Alert, StyleSheet, FlatList 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  StyleSheet,
+  FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/src/app/lib/supabase';
@@ -16,7 +23,7 @@ export async function SalvarTarefa(
 ) {
   if (!nome || !data_conclusao) {
     Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
-    return;
+    return false;
   }
 
   const novaTarefa = {
@@ -28,7 +35,6 @@ export async function SalvarTarefa(
   };
 
   const { error } = await supabase.from('tarefas').insert([novaTarefa]);
-
   if (error) {
     Alert.alert('Erro ao salvar tarefa', error.message);
     return false;
@@ -42,6 +48,8 @@ export default function Perfil() {
   const { setUser, user } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [idEditando, setIdEditando] = useState<number | null>(null);
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -61,7 +69,6 @@ export default function Perfil() {
     router.replace('/(auth)/login/page');
   }
 
-  // Função para buscar tarefas do usuário logado
   async function carregarTarefas() {
     if (!user) return;
     setLoading(true);
@@ -79,45 +86,96 @@ export default function Perfil() {
     setLoading(false);
   }
 
-  // Busca tarefas ao carregar o componente e quando o usuário mudar
   useEffect(() => {
     carregarTarefas();
   }, [user]);
 
   async function handleSalvar() {
     if (!user) return;
-    const sucesso = await SalvarTarefa(nome, descricao, dataConclusao, user.id);
-    if (sucesso) {
-      setFormVisible(false);
-      setNome('');
-      setDescricao('');
-      setDataConclusao('');
-      carregarTarefas(); // Atualiza lista após salvar
+
+    if (editando && idEditando !== null) {
+      const { error } = await supabase
+        .from('tarefas')
+        .update({ nome, descricao, data_conclusao: dataConclusao })
+        .eq('id', idEditando);
+
+      if (error) {
+        Alert.alert('Erro ao atualizar tarefa', error.message);
+        return;
+      }
+
+      Alert.alert('Sucesso', 'Tarefa atualizada com sucesso!');
+    } else {
+      const sucesso = await SalvarTarefa(nome, descricao, dataConclusao, user.id);
+      if (!sucesso) return;
     }
+
+    setFormVisible(false);
+    setNome('');
+    setDescricao('');
+    setDataConclusao('');
+    setEditando(false);
+    setIdEditando(null);
+    carregarTarefas();
   }
 
-  // Render para cada item da lista de tarefas
+  async function excluirTarefa(id: number) {
+    Alert.alert('Confirmar exclusão', 'Tem certeza que deseja excluir esta tarefa?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.from('tarefas').delete().eq('id', id);
+          if (error) {
+            Alert.alert('Erro ao excluir tarefa', error.message);
+          } else {
+            carregarTarefas();
+          }
+        },
+      },
+    ]);
+  }
+
+  function editarTarefa(tarefa: any) {
+    setNome(tarefa.nome);
+    setDescricao(tarefa.descricao);
+    setDataConclusao(tarefa.data_conclusao);
+    setIdEditando(tarefa.id);
+    setEditando(true);
+    setFormVisible(true);
+  }
+
   function renderTarefa({ item }: { item: any }) {
     return (
       <View style={styles.tarefaItem}>
         <Text style={styles.tarefaNome}>{item.nome}</Text>
-        {item.descricao ? <Text style={styles.tarefaDescricao}>{item.descricao}</Text> : null}
+        {item.descricao ? (
+          <Text style={styles.tarefaDescricao}>{item.descricao}</Text>
+        ) : null}
         <Text style={styles.tarefaData}>Prazo: {item.data_conclusao}</Text>
+
+        <View style={styles.actionsRow}>
+          <TouchableOpacity onPress={() => editarTarefa(item)}>
+            <Ionicons name="create-outline" size={20} color={colors.blue} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => excluirTarefa(item.id)} style={{ marginLeft: 15 }}>
+            <Ionicons name="trash-outline" size={20} color={colors.green} />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Botão Perfil */}
       <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.dropdownButton}>
         <Text style={styles.dropdownBotaoTexto}>
           <Ionicons name="person-outline" size={24} color={colors.white} /> Perfil
         </Text>
       </TouchableOpacity>
 
-      {/* Modal de Sessão */}
-      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+      <Modal transparent visible={menuVisible} animationType="fade">
         <TouchableOpacity
           style={styles.modalOverlay}
           onPress={() => setMenuVisible(false)}
@@ -131,7 +189,6 @@ export default function Perfil() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Lista de tarefas do usuário */}
       <View style={styles.tarefasContainer}>
         <Text style={styles.tarefasTitulo}>Minhas Tarefas</Text>
         {loading ? (
@@ -143,19 +200,24 @@ export default function Perfil() {
             data={tarefas}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderTarefa}
-            style={{ width: '100%' }}
           />
         )}
       </View>
 
-      {/* Botão de Adicionar */}
       <View style={styles.botaoAdd}>
-        <TouchableOpacity onPress={() => setFormVisible(true)}>
+        <TouchableOpacity
+          onPress={() => {
+            setEditando(false);
+            setNome('');
+            setDescricao('');
+            setDataConclusao('');
+            setFormVisible(true);
+          }}
+        >
           <Ionicons name="add-circle-outline" size={30} color={colors.white} />
         </TouchableOpacity>
       </View>
 
-      {/* Modal do Formulário */}
       <Modal visible={formVisible} animationType="slide" transparent>
         <View style={styles.formContainer}>
           <View style={styles.formBox}>
@@ -178,7 +240,7 @@ export default function Perfil() {
             <Text style={styles.label}>Data de Conclusão *</Text>
             <TextInput
               style={styles.input}
-              placeholder="AAAA-MM-DD"
+              placeholder="YYYY-MM-DD"
               value={dataConclusao}
               onChangeText={setDataConclusao}
             />
@@ -189,7 +251,7 @@ export default function Perfil() {
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleSalvar}>
-                <Text style={styles.salvar}>Salvar</Text>
+                <Text style={styles.salvar}>{editando ? 'Atualizar' : 'Salvar'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -200,22 +262,14 @@ export default function Perfil() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    alignItems: 'flex-end',
-    paddingRight: 20,
-  },
+  container: { flex: 1, paddingTop: 60, alignItems: 'flex-end', paddingRight: 20 },
   dropdownButton: {
     backgroundColor: colors.blue,
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 6,
   },
-  dropdownBotaoTexto: {
-    color: colors.white,
-    fontSize: 16,
-  },
+  dropdownBotaoTexto: { color: colors.white, fontSize: 16 },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-start',
@@ -231,12 +285,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     elevation: 5,
   },
-  menuItem: {
-    paddingVertical: 10,
+  menuItem: { paddingVertical: 10 },
+  menuTexto: { fontSize: 16, color: colors.blue },
+  tarefasContainer: { marginTop: 20, width: '100%', paddingHorizontal: 10 },
+  tarefasTitulo: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+  tarefaItem: {
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 8,
   },
-  menuTexto: {
-    fontSize: 16,
-    color: colors.blue,
+  tarefaNome: { fontSize: 16, fontWeight: 'bold' },
+  tarefaDescricao: { fontSize: 14, color: '#555', marginTop: 5 },
+  tarefaData: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    marginTop: 10,
   },
   botaoAdd: {
     position: 'absolute',
@@ -258,10 +327,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
   },
-  label: {
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
+  label: { fontWeight: 'bold', marginTop: 10 },
   input: {
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
@@ -273,43 +339,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 15,
   },
-  cancelar: {
-    color: colors.blue,
-    fontWeight: 'bold',
-  },
-  salvar: {
-    color: colors.green,
-    fontWeight: 'bold',
-  },
-  tarefasContainer: {
-    marginTop: 20,
-    width: '100%',
-    paddingHorizontal: 10,
-  },
-  tarefasTitulo: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  tarefaItem: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 8,
-  },
-  tarefaNome: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  tarefaDescricao: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 5,
-  },
-  tarefaData: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 5,
-    fontStyle: 'italic',
-  },
+  cancelar: { color: colors.blue, fontWeight: 'bold' },
+  salvar: { color: colors.green, fontWeight: 'bold' },
 });
