@@ -80,6 +80,8 @@ export default function Cadastrar(){
              style = {styles.input}
              value={email}
              onChangeText={setEmail}
+              keyboardType='email-address'
+              autoCapitalize='none'
              ></TextInput>
 
 
@@ -149,7 +151,8 @@ const styles = StyleSheet.create({
        marginBottom: 4,
     },
     input: {
-        height: 40,
+        height: 50,
+        width: '100%',
         borderWidth: 1,
         borderColor: colors.blue,
         borderRadius: 8,
