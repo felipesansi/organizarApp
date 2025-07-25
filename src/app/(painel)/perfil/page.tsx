@@ -297,7 +297,14 @@ export default function Perfil() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, alignItems: 'flex-end', paddingRight: 20 },
+  container: { 
+    flex: 1,
+     paddingTop: 60, 
+     alignItems: 'flex-end',
+     paddingRight: 20,
+      backgroundColor: colors.gray
+
+   },
   dropdownButton: {
     backgroundColor: colors.blue,
     paddingVertical: 10,
@@ -386,4 +393,5 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: 'bold',
   },
+  
 });
