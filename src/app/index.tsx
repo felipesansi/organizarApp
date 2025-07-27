@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './lib/supabase';
-import colors from '@/constants/colors';
+import colors from '@/src/constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function IndexScreen() {
