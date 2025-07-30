@@ -9,11 +9,12 @@ import {
   FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '@/src/app/lib/supabase';
-import { useAuth } from '@/src/contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import colors from '@/constants/colors';
+import colors from '../../../constants/Colors';
+
 
 export async function SalvarTarefa(
   nome: string,
