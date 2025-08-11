@@ -1,4 +1,11 @@
 {
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["@rneui/base", "@rneui/themed"]
+      }
+    }
+  },
   "name": "organizarapp",
   "main": "expo-router/entry",
   "version": "1.0.0",

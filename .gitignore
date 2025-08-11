@@ -37,3 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 supabasse.ts
+# Pastas nativas geradas pelo EAS Build
+/android/
+/ios/
